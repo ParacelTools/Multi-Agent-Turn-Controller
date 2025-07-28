@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent Dashboard</title>
+</head>
+<body>
+    <h1>Multi-Agent Turn Controller</h1>
+
+    <form id="turn-form">
+        <label for="turn_count">Total Turns to Queue:</label>
+        <input type="number" id="turn_count" name="turn_count" min="1" max="100" value="1"><br><br>
+
+        <label for="max_tokens">Max Tokens (per response):</label>
+        <input type="number" id="max_tokens" name="max_tokens" min="50" max="99999" value="8000"><br><br>
+
+        <label for="agent_select">Select Agent:</label>
+        <select id="agent_select" name="agent">
+            <option value="">Loading...</option>
+        </select><br><br>
+
+        <button type="submit">Queue Turns</button>
+    </form>
+        <h3>Post a message to the conversation.</h3>
+        <textarea id="manual-message" rows="4" cols="100" placeholder="Write something directly to the convo..."></textarea><br>
+        <button id="post-message">Post to conversation.</button>
+    <hr>
+
+    <div>
+        <label for="shared_memory">Conversation Pit:</label><br>
+        <textarea id="shared_memory" name="shared_memory" rows="25" cols="120" readonly placeholder="Agents will write messages here..."></textarea><br>
+    </div>
+
+    <div id="status"></div>
+
+    <h3>Clear conversation</h3>
+    <button id="clear-convo">Clear Conversation</button>
+
+<h2>Advanced:</h2>
+
+<button onclick="loadAgentPayloads()">Get Latest Summaries from Selected Agent and recent API Payloads</button>
+
+<h3>H-CALL Response (hcall_history.db)</h3>
+<textarea id="hcall-log" rows="16" cols="100" readonly></textarea>
+
+<h3>D-CALL Response (dcall_dialog.db)</h3>
+<textarea id="dcall-log" rows="16" cols="100" readonly></textarea>
+
+<h3>R-CALL Response (rcall_response.db)</h3>
+<textarea id="rcall-log" rows="16" cols="100" readonly></textarea>
+
+<h3>API Payloads</h3>
+<textarea id="api-log" rows="20" cols="100" readonly></textarea>
+
+
+    <script>
+    document.getElementById("turn-form").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const count = parseInt(document.getElementById("turn_count").value);
+        const agent = document.getElementById("agent_select").value;
+        if (!agent) return alert("Select an agent.");
+
+        const res = await fetch("/api/queue_turns", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ 
+                turns: count, 
+                agents: [agent],
+                max_tokens: parseInt(document.getElementById("max_tokens").value)
+            })
+        });
+
+        const result = await res.json();
+        document.getElementById("status").innerText = result.status;
+    });
+
+    document.getElementById("post-message").addEventListener("click", async function () {
+    const message = document.getElementById("manual-message").value;
+    if (!message.trim()) return;
+
+    await fetch("/api/post_message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: message })
+    });
+
+    document.getElementById("manual-message").value = "";
+    loadChatHistory();
+});
+
+document.getElementById("clear-convo").addEventListener("click", async function () {
+    if (!confirm("Are you sure you want to clear the conversation?")) return;
+
+    await fetch("/api/clear_convo", { method: "POST" });
+    loadChatHistory();
+});
+
+
+
+    async function refreshMemory() {
+        const res = await fetch("/api/view_memory");
+        const data = await res.json();
+        document.getElementById("shared_memory").value = data.content;
+    }
+
+    async function loadAgentList() {
+        const res = await fetch("/api/agents");
+        const data = await res.json();
+        const select = document.getElementById("agent_select");
+        select.innerHTML = "";
+        data.agents.forEach(agent => {
+            const option = document.createElement("option");
+            option.value = agent;
+            option.textContent = agent;
+            select.appendChild(option);
+        });
+    }
+
+
+
+
+async function loadAgentPayloads() {
+    const agent = document.getElementById("agent_select").value;
+    if (!agent) return;
+
+    const res = await fetch(`/api/view_turn/${agent}`);
+    const data = await res.json();
+
+    ["hcall", "dcall", "rcall"].forEach(phase => {
+        const logBox = document.getElementById(`${phase}-log`);
+        const blocks = data.logs[phase] || [];
+        if (logBox) {
+            logBox.value = blocks.join("\n\n---\n\n");
+        }
+    });
+
+const apiBox = document.getElementById("api-log");
+const rawTail = data.payloads?.tail || "";
+
+try {
+    // Try to isolate just one JSON payload block from the log
+    const jsonMatch = rawTail.match(/\{[\s\S]*?\n\}/);
+    if (!jsonMatch) throw new Error("No JSON block found");
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    if (Array.isArray(parsed.messages)) {
+        parsed.messages = parsed.messages.map(msg => {
+            if (typeof msg.content === "string") {
+                try {
+                    // Double-decode the string
+                    msg.content = JSON.parse(`"${msg.content}"`);
+                } catch {
+                    // fallback if not double-escaped
+                    msg.content = msg.content.replace(/\\n/g, '\n');
+                }
+            }
+            return msg;
+        });
+    }
+
+    apiBox.value = JSON.stringify(parsed, null, 2);
+
+} catch (err) {
+    console.warn("Failed to parse payload:", err);
+    apiBox.value = rawTail;
+}
+
+}
+    
+    setInterval(refreshMemory, 3000);
+    loadAgentList();
+    </script>
+</body>
+</html>
