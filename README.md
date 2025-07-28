@@ -1,0 +1,1 @@
+this does not work well yet, still trying to get the kinks out. First and foremost, the run.sh does not have all the dependencies written in yet, if you want to mess around with it youll prolly have to add that stuff to the venv manually ¯\_(ツ)_/¯
