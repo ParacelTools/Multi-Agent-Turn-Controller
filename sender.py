@@ -1,3 +1,5 @@
+# Utility functions for talking to a locally hosted LLaMA server
+
 import requests
 import json
 from datetime import datetime
@@ -13,6 +15,7 @@ def send_chat_completion(
     url="http://10.0.0.101:8080/v1/chat/completions",
     grammar=None,
 ):
+    # Send a chat completion request and return the assistant's reply
     payload = {
         "model": model,
         "messages": [
@@ -38,6 +41,7 @@ def send_chat_completion(
         return f"[Error from llama-server: {e}]"
 
 def log_payload(payload):
+    # Append the outgoing payload to ``llama_payload.log`` for debugging
     # Step 1: Pre-process content fields to unescape \n
     for msg in payload.get("messages", []):
         if isinstance(msg.get("content"), str):
