@@ -40,19 +40,7 @@ def send_chat_completion(
     except Exception as e:
         return f"[Error from llama-server: {e}]"
 
-def log_payload(payload):
-    # Append the outgoing payload to ``llama_payload.log`` for debugging
-    # Step 1: Pre-process content fields to unescape \n
-    for msg in payload.get("messages", []):
-        if isinstance(msg.get("content"), str):
-            # Convert "\\n" into real newlines
-            msg["content"] = msg["content"].encode("utf-8").decode("unicode_escape")
-
-    # Step 2: Dump with real formatting
-    log_path = Path("llama_payload.log")
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"# {timestamp}\n")
-        f.write(json.dumps(payload, indent=2, ensure_ascii=False))
-        f.write("\n---\n")
+def log_payload(payload, log_path="llama_payload.log"):
+    timestamp = datetime.utcnow().isoformat()
+    with open(log_path, "a") as f:
+        f.write(f"[{timestamp}]\n{json.dumps(payload, indent=2)}\n\n")
