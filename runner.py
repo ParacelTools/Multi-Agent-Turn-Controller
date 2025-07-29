@@ -1,3 +1,5 @@
+# Command line utility for orchestrating multi-agent conversations
+
 import os
 import time
 import yaml
@@ -7,17 +9,26 @@ from itertools import cycle
 from sender import send_chat_completion
 
 def build_system_prompt(config_text: str, context_text: str) -> str:
-        config_clean = config_text.strip()
-        context_clean = context_text.strip()
+    # Construct the full system prompt for a model call
+    # ``config_text`` comes from an agent's ``config.yaml`` and
+    # ``context_text`` represents the shared conversation so far. When
+    # context exists, it is appended below the configuration for additional
+    # background
 
-        if context_clean:
-            framed_context = f"---\nConversation so far:\n{context_clean}\n---"
-            return f"{config_clean}\n\n{framed_context}"
-        else:
-            return config_clean
+    config_clean = config_text.strip()
+    context_clean = context_text.strip()
+
+    if context_clean:
+        framed_context = f"---\nConversation so far:\n{context_clean}\n---"
+        return f"{config_clean}\n\n{framed_context}"
+    else:
+        return config_clean
 
 class Agent:
+    # Represents an individual conversational agent
+
     def __init__(self, name, base_path, max_tokens):
+        # Create a new agent with storage paths under ``base_path``
         self.name = name
         self.base_path = base_path
         self.memory_path = base_path / "convo.md"
@@ -26,6 +37,7 @@ class Agent:
         self.max_tokens = max_tokens
 
     def hcall(self):
+        # Summarize the conversation history from the agent's viewpoint
         # Load agent config
         config = self.load_config()
         persona = config.get("persona", self.display_name)
@@ -72,6 +84,7 @@ class Agent:
             f.write(f"[{timestamp}]\n{summary.strip()}\n\n")
 
     def dcall(self):
+        # Decide the agent's next action and emotional state
         config = self.load_config()
         persona = config.get("persona", "")
         goals = config.get("goals", [])
@@ -142,6 +155,7 @@ class Agent:
             f.write(f"[{timestamp}]\n{decision_text.strip()}\n\n")
 
     def rcall(self):
+        # Generate the agent's actual reply based on earlier decisions
         config = self.load_config()
         persona = config.get("persona", "")
         goals = config.get("goals", [])
@@ -220,6 +234,7 @@ class Agent:
             f.write(f"[{timestamp}]\n{formatted.strip()}\n\n")
 
     def _parse_decision_block(self, text):
+        # Extract structured data from a previous decision block
         result = {"choice": "", "mood": "", "justification": ""}
         for line in text.strip().splitlines():
             if line.startswith("choice:"):
@@ -231,6 +246,7 @@ class Agent:
         return result
 
     def load_config(self):
+        # Load this agent's YAML configuration as a dictionary
         if self.config_path.exists():
             raw = self.config_path.read_text()
             try:
@@ -243,13 +259,16 @@ class Agent:
         return {}
 
     def read_memory(self):
+        # Return the shared conversation text
         return self.memory_path.read_text() if self.memory_path.exists() else ""
 
-    def append_to_memory(self, text): #writes to convo.md 
+    def append_to_memory(self, text):  # writes to convo.md
+        # Append ``text`` to the conversation log
         with self.memory_path.open("a") as f:
             f.write(text + "\n")
 
     def run_turn(self):
+        # Run a full turn by calling ``hcall``/``dcall``/``rcall`` in sequence
         context = self.read_memory()
         config = self.load_config()
 
@@ -264,6 +283,7 @@ class Agent:
         self.append_to_memory(formatted)
 
     def _get_latest_log(self, log_dir):
+        # Return the contents of the newest log file in ``log_dir``
         if not log_dir.exists():
             return "[no summary available]"
         files = sorted(log_dir.glob(f"{self.name}_turn_*.txt"), reverse=True)
@@ -272,11 +292,15 @@ class Agent:
         return "[no summary available]"
 
 class AgentRunner:
+    # Utility to cycle through a list of agents for a set number of turns
+
     def __init__(self, agent_names, turns, max_tokens, base_dir="."):
+        # Instantiate agents and store execution parameters
         self.agents = [Agent(name, Path(base_dir), max_tokens) for name in agent_names]
         self.turns = turns
 
     def run(self):
+        # Iterate over agents, executing all three phases per turn
         from itertools import cycle
         turn_cycle = cycle(self.agents)
         for _ in range(self.turns):
@@ -291,6 +315,7 @@ class AgentRunner:
             time.sleep(0.2)
 
 if __name__ == "__main__":
+    # Simple CLI entry point used during development.
     parser = argparse.ArgumentParser()
     parser.add_argument("--agents", required=True, help="Comma-separated agent names")
     parser.add_argument("--turns", type=int, required=True, help="Total number of turns to run")
