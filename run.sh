@@ -10,21 +10,8 @@ fi
 # Activate venv
 source .venv/bin/activate
 
-# Install Flask if not installed
-if ! pip show flask >/dev/null 2>&1; then
-    echo "-- Installing Flask..."
-    pip install flask
-fi
-
-if ! pip show requests >/dev/null 2>&1; then
-    echo "-- Installing Requests..."
-    pip install requests
-fi
-
-if ! pip show pyyaml >/dev/null 2>&1; then
-    echo "-- Installing pyyaml..."
-    pip install pyyaml
-fi
+# Install req if not installed
+pip install -r requirements.txt
 
 # Run app.py
 echo "-- Launching app.py ..."
