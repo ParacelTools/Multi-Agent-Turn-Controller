@@ -27,7 +27,7 @@ def send_chat_completion(
     }
 
     if grammar:
-        payload["grammar"] = grammar  # ✅ inject grammar if present
+        payload["grammar"] = grammar  # inject grammar if present
 
     log_payload(payload)
 

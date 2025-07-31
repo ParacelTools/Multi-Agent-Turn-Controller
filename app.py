@@ -23,24 +23,19 @@ os.makedirs(AGENTS_DIR, exist_ok=True)
 # Route: main dashboard page (serves dashboard.html from templates folder)
 @app.route("/")
 def index():
-    # Render the main dashboard HTML page
     return render_template("index.html")
 
 # Route: returns a list of agent names based on subdirectories in ./agents
 @app.route("/api/agents")
 def get_agents():
-    # Return a JSON list of available agent directories
-    agents = [
-        name for name in os.listdir(AGENTS_DIR)
-        if os.path.isdir(os.path.join(AGENTS_DIR, name))
-    ]
+    agents = [name for name in os.listdir(AGENTS_DIR)
+              if os.path.isdir(os.path.join(AGENTS_DIR, name))]
     return jsonify({"agents": agents})
 
 # Route: accepts a JSON payload with {"agents": [...], "turns": N}
 # Launches runner.py subprocess with arguments
 @app.route("/api/queue_turns", methods=["POST"])
 def queue_turns():
-    # Launch ``runner.py`` as a subprocess for the given agents
     data = request.get_json()
     agents = data.get("agents", [])
     turns = int(data.get("turns", 0))
@@ -63,7 +58,6 @@ def queue_turns():
 # Route: reads and returns the contents of convo.md so the controller can display it
 @app.route("/api/view_memory")
 def view_memory():
-    # Return the current conversation log as plain text
     if os.path.exists(MEMORY_PATH):
         with open(MEMORY_PATH, "r") as f:
             return jsonify({"content": f.read()})
@@ -71,7 +65,7 @@ def view_memory():
 
 @app.route("/api/post_message", methods=["POST"])
 def post_message():
-    # Append a user supplied message to ``convo.md``
+        # Append a user supplied message to ``convo.md``
     data = request.get_json()
     text = data.get("text", "").strip()
     if text:
@@ -87,7 +81,7 @@ def clear_convo():
     return jsonify({"status": "cleared"})
 
 def tail_blocks(path, n=5):
-    # Return the last ``n`` markdown blocks from ``path``
+        # Return the last ``n`` markdown blocks from ``path``
     if not path.exists():
         return []
     try:
@@ -97,21 +91,9 @@ def tail_blocks(path, n=5):
     except Exception as e:
         return [f"[Error reading {path.name}: {e}]"]
 
-
-def tail_blocks(path, n=5):
-    # Duplicate helper kept for legacy reasons
-    if not path.exists():
-        return []
-    try:
-        text = path.read_text().strip()
-        blocks = text.split("\n\n")
-        return blocks[-n:]
-    except Exception as e:
-        return [f"[Error reading {path.name}: {e}]"]
 
 @app.route("/api/view_turn/<agent>")
 def view_turn(agent):
-    # Return recent log excerpts and payloads for ``agent``
     base = Path("agents") / agent
 
     logs = {
@@ -136,6 +118,6 @@ def view_turn(agent):
 
 # Start the Flask server on port 5009, accessible on all interfaces
 if __name__ == "__main__":
-    # Development entry point; starts the Flask server on all interfaces
+        # Development entry point; starts the Flask server on all interfaces
     app.run(host="0.0.0.0", port=5009)
 

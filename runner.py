@@ -1,4 +1,4 @@
-# Command line utility for orchestrating multi-agent conversations
+# utility for orchestrating multi-agent conversations
 
 import os
 import time
@@ -9,24 +9,23 @@ from itertools import cycle
 from sender import send_chat_completion
 
 def build_system_prompt(config_text: str, context_text: str) -> str:
+        
     # Construct the full system prompt for a model call
     # ``config_text`` comes from an agent's ``config.yaml`` and
     # ``context_text`` represents the shared conversation so far. When
     # context exists, it is appended below the configuration for additional
     # background
+        config_clean = config_text.strip()
+        context_clean = context_text.strip()
 
-    config_clean = config_text.strip()
-    context_clean = context_text.strip()
-
-    if context_clean:
-        framed_context = f"---\nConversation so far:\n{context_clean}\n---"
-        return f"{config_clean}\n\n{framed_context}"
-    else:
-        return config_clean
+        if context_clean:
+            framed_context = f"---\nConversation so far:\n{context_clean}\n---"
+            return f"{config_clean}\n\n{framed_context}"
+        else:
+            return config_clean
 
 class Agent:
-    # Represents an individual conversational agent
-
+        # Represents an individual conversational agent and multi-phase turn format  
     def __init__(self, name, base_path, max_tokens):
         # Create a new agent with storage paths under ``base_path``
         self.name = name
@@ -262,13 +261,12 @@ class Agent:
         # Return the shared conversation text
         return self.memory_path.read_text() if self.memory_path.exists() else ""
 
-    def append_to_memory(self, text):  # writes to convo.md
-        # Append ``text`` to the conversation log
+    def append_to_memory(self, text): 
+        #writes to convo.md 
         with self.memory_path.open("a") as f:
             f.write(text + "\n")
 
     def run_turn(self):
-        # Run a full turn by calling ``hcall``/``dcall``/``rcall`` in sequence
         context = self.read_memory()
         config = self.load_config()
 
@@ -283,7 +281,6 @@ class Agent:
         self.append_to_memory(formatted)
 
     def _get_latest_log(self, log_dir):
-        # Return the contents of the newest log file in ``log_dir``
         if not log_dir.exists():
             return "[no summary available]"
         files = sorted(log_dir.glob(f"{self.name}_turn_*.txt"), reverse=True)
@@ -291,16 +288,16 @@ class Agent:
             return files[0].read_text().strip()
         return "[no summary available]"
 
+
+
 class AgentRunner:
     # Utility to cycle through a list of agents for a set number of turns
-
     def __init__(self, agent_names, turns, max_tokens, base_dir="."):
-        # Instantiate agents and store execution parameters
         self.agents = [Agent(name, Path(base_dir), max_tokens) for name in agent_names]
         self.turns = turns
 
     def run(self):
-        # Iterate over agents, executing all three phases per turn
+         # Iterate over agents, executing all three phases per turn
         from itertools import cycle
         turn_cycle = cycle(self.agents)
         for _ in range(self.turns):
@@ -315,7 +312,7 @@ class AgentRunner:
             time.sleep(0.2)
 
 if __name__ == "__main__":
-    # Simple CLI entry point used during development.
+    # CLI entry point used during development.
     parser = argparse.ArgumentParser()
     parser.add_argument("--agents", required=True, help="Comma-separated agent names")
     parser.add_argument("--turns", type=int, required=True, help="Total number of turns to run")
